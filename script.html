@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ShopifyBridge — Script</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#020408;--panel:rgba(6,18,32,0.9);--panel2:rgba(8,24,42,0.6);--border:rgba(0,200,255,0.12);--border-hi:rgba(0,200,255,0.4);--cyan:#00c8ff;--cyan-dim:rgba(0,200,255,0.12);--green:#00ff88;--green-dim:rgba(0,255,136,0.1);--amber:#ffb800;--red:#ff3860;--text:#e0f4ff;--muted:rgba(160,210,240,0.45);--dsp:'Orbitron',monospace;--ui:'Rajdhani',sans-serif;--mono:'Space Mono',monospace}
+    html,body{min-height:100vh}body{background:var(--bg);color:var(--text);font-family:var(--ui);font-size:15px;overflow-x:hidden}
+    body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(0,200,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,200,255,0.03) 1px,transparent 1px);background-size:40px 40px;animation:gM 20s linear infinite}@keyframes gM{to{background-position:40px 40px}}
+    .scanline{position:fixed;inset:0;z-index:998;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.025) 2px,rgba(0,0,0,0.025) 4px)}
+    .app{display:flex;min-height:100vh;position:relative;z-index:1}
+    .sidebar{width:255px;min-height:100vh;background:var(--panel);border-right:1px solid var(--border);backdrop-filter:blur(20px);display:flex;flex-direction:column;position:fixed;left:0;top:0;z-index:100}
+    .sb-brand{padding:26px 22px 20px;border-bottom:1px solid var(--border)}.sb-eye{font-family:var(--mono);font-size:9px;color:var(--cyan);letter-spacing:3px;margin-bottom:4px}.sb-name{font-family:var(--dsp);font-size:17px;font-weight:900;letter-spacing:2px;text-shadow:0 0 20px rgba(0,200,255,0.3)}.sb-name span{color:var(--cyan)}.sb-status{display:flex;align-items:center;gap:6px;margin-top:8px}.dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 2s ease infinite}@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}.dot-lbl{font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:2px}
+    .sb-nav{flex:1;padding:18px 14px;display:flex;flex-direction:column;gap:3px}.nav-sec{font-family:var(--mono);font-size:9px;letter-spacing:3px;color:var(--muted);padding:10px 8px 5px}.nav-a{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:2px;color:var(--muted);font-size:13px;font-weight:600;text-decoration:none;letter-spacing:1px;text-transform:uppercase;border:1px solid transparent;transition:all 0.2s;position:relative}.nav-a::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--cyan);transform:scaleY(0);transition:transform 0.2s}.nav-a:hover{color:var(--cyan);border-color:var(--border);background:var(--cyan-dim)}.nav-a:hover::before,.nav-a.on::before{transform:scaleY(1)}.nav-a.on{color:var(--cyan);border-color:var(--border-hi);background:var(--cyan-dim)}.sb-foot{padding:14px 22px;border-top:1px solid var(--border)}.sb-ver{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:2px}
+    .main{margin-left:255px;flex:1;padding:34px 38px;min-height:100vh}
+    .ph{margin-bottom:26px;border-bottom:1px solid var(--border);padding-bottom:20px}.ph-eye{font-family:var(--mono);font-size:10px;letter-spacing:3px;color:var(--cyan);margin-bottom:5px}.ph h1{font-family:var(--dsp);font-size:26px;font-weight:900;letter-spacing:2px;text-shadow:0 0 30px rgba(0,200,255,0.15)}
+    .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;font-family:var(--ui);font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;border-radius:2px;cursor:pointer;border:1px solid;transition:all 0.2s}.btn-c{background:var(--cyan-dim);border-color:var(--cyan);color:var(--cyan)}.btn-c:hover{box-shadow:0 0 22px rgba(0,200,255,0.28);transform:translateY(-1px)}.btn-ghost{background:transparent;border-color:var(--border);color:var(--muted)}.btn-ghost:hover{border-color:var(--border-hi);color:var(--text)}
+    .steps{display:flex;border:1px solid var(--border);border-radius:2px;overflow:hidden;margin-bottom:28px}
+    .si{flex:1;padding:14px 18px;border-right:1px solid var(--border);display:flex;align-items:center;gap:10px;transition:background 0.2s}.si:last-child{border-right:none}.si.done{background:var(--green-dim)}.si.pend{background:rgba(255,184,0,0.08)}
+    .sn{font-family:var(--dsp);font-size:18px;font-weight:900;color:var(--muted);min-width:26px}.si.done .sn{color:var(--green)}.si.pend .sn{color:var(--amber)}
+    .si-info{display:flex;flex-direction:column;gap:2px}.si-name{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase}.si.done .si-name{color:var(--green)}.si.pend .si-name{color:var(--amber)}.si-sub{font-size:11px;color:var(--muted)}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:2px;overflow:hidden;position:relative;margin-bottom:18px}.panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:0.4}
+    .p-head{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.p-ttl{font-family:var(--mono);font-size:10px;color:var(--cyan);letter-spacing:2px;text-transform:uppercase}
+    .code{background:rgba(0,5,12,0.95);padding:18px;font-family:var(--mono);font-size:11px;color:#00e5ff;overflow:auto;white-space:pre;line-height:1.8;max-height:400px}
+    .inst{display:flex;flex-direction:column}
+    .ir{display:flex;gap:14px;align-items:flex-start;padding:13px 20px;border-bottom:1px solid rgba(0,200,255,0.05)}.ir:last-child{border-bottom:none}
+    .in{font-family:var(--dsp);font-size:13px;font-weight:900;color:var(--cyan);min-width:22px}.it{font-size:13px;color:var(--muted);line-height:1.7;padding-top:1px}.it strong{color:var(--text)}.it code{font-family:var(--mono);font-size:11px;color:var(--amber);background:rgba(255,184,0,0.06);padding:1px 5px;border-radius:2px}
+    .nr{text-align:center;padding:60px 20px}.nr-ic{font-size:40px;margin-bottom:14px;opacity:0.3}.nr-t{font-family:var(--dsp);font-size:15px;letter-spacing:2px;color:var(--text);margin-bottom:7px}.nr-s{font-size:12px;color:var(--muted)}
+    #toast{position:fixed;bottom:22px;right:22px;z-index:9999;background:var(--panel);border-radius:2px;padding:13px 18px;font-family:var(--mono);font-size:11px;letter-spacing:1px;transform:translateY(60px);opacity:0;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);max-width:300px;pointer-events:none;backdrop-filter:blur(20px)}#toast.show{transform:translateY(0);opacity:1}#toast.ok{border:1px solid var(--green);color:var(--green)}#toast.err{border:1px solid var(--red);color:var(--red)}#toast.info{border:1px solid var(--cyan);color:var(--cyan)}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}.a0{animation:fadeUp 0.4s ease both}.a1{animation:fadeUp 0.4s 0.07s ease both}.a2{animation:fadeUp 0.4s 0.14s ease both}.a3{animation:fadeUp 0.4s 0.21s ease both}
+    ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border-hi)}
+    @media(max-width:800px){.sidebar{display:none}.main{margin-left:0;padding:18px 14px}.steps{flex-direction:column}.si{border-right:none;border-bottom:1px solid var(--border)}.si:last-child{border-bottom:none}}
+  </style>
+</head>
+<body>
+<div class="scanline"></div><div id="toast"></div>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sb-brand"><div class="sb-eye">// SYSTEM ACTIVE</div><div class="sb-name">SHOPIFY<span>BRIDGE</span></div><div class="sb-status"><div class="dot"></div><div class="dot-lbl">ONLINE</div></div></div>
+    <nav class="sb-nav"><div class="nav-sec">// NAV</div><a href="dashboard.html" class="nav-a"><span>◈</span>Dashboard</a><a href="stores.html" class="nav-a"><span>◉</span>Lojas</a><a href="products.html" class="nav-a"><span>▦</span>Produtos</a><a href="script.html" class="nav-a on"><span>⌘</span>Script</a></nav>
+    <div class="sb-foot"><div class="sb-ver">VER 2.0.0 — STABLE</div></div>
+  </aside>
+  <main class="main">
+    <div class="ph a0"><div class="ph-eye">// GERADOR DE CÓDIGO</div><h1>SCRIPT</h1></div>
+    <div class="steps a1">
+      <div class="si" id="s1"><div class="sn" id="s1n">01</div><div class="si-info"><div class="si-name">Lojas</div><div class="si-sub" id="s1s">Configure as duas lojas</div></div></div>
+      <div class="si" id="s2"><div class="sn" id="s2n">02</div><div class="si-info"><div class="si-name">Produtos</div><div class="si-sub" id="s2s">Sincronize os SKUs</div></div></div>
+      <div class="si" id="s3"><div class="sn" id="s3n">03</div><div class="si-info"><div class="si-name">Copiar</div><div class="si-sub">Clique em COPIAR abaixo</div></div></div>
+      <div class="si"><div class="sn">04</div><div class="si-info"><div class="si-name">Instalar</div><div class="si-sub">Cole no theme.liquid</div></div></div>
+    </div>
+    <div id="notReady" class="panel a2" style="display:none">
+      <div class="nr"><div class="nr-ic">⌘</div><div class="nr-t">LOJAS NÃO CONFIGURADAS</div><div class="nr-s">Configure e salve as duas lojas antes de gerar o script.</div><br><a href="stores.html" class="btn btn-c" style="margin-top:16px;display:inline-flex">→ CONFIGURAR LOJAS</a></div>
+    </div>
+    <div id="ready" style="display:none">
+      <div class="panel a2">
+        <div class="p-head">
+          <div class="p-ttl">// SCRIPT — COLE NO THEME.LIQUID DA LOJA A</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost" onclick="copyScript()">📋 COPIAR</button>
+            <button class="btn btn-ghost" onclick="dlScript()">⬇ BAIXAR</button>
+          </div>
+        </div>
+        <div class="code" id="codeEl"></div>
+      </div>
+      <div class="panel a3">
+        <div class="p-head"><div class="p-ttl">// GUIA DE INSTALAÇÃO</div></div>
+        <div class="inst">
+          <div class="ir"><div class="in">1</div><div class="it">Acesse o <strong>Admin da Loja A</strong> → menu lateral → <strong>Online Store</strong></div></div>
+          <div class="ir"><div class="in">2</div><div class="it">Clique nos <strong>três pontinhos ···</strong> ao lado do tema ativo → <strong>Edit code</strong></div></div>
+          <div class="ir"><div class="in">3</div><div class="it">No painel esquerdo: <strong>Layout</strong> → abra o arquivo <code>theme.liquid</code></div></div>
+          <div class="ir"><div class="in">4</div><div class="it">Use <strong>Ctrl+F</strong> e busque por <code>&lt;/body&gt;</code></div></div>
+          <div class="ir"><div class="in">5</div><div class="it">Cole o script copiado <strong>imediatamente antes</strong> de <code>&lt;/body&gt;</code></div></div>
+          <div class="ir"><div class="in">6</div><div class="it">Clique em <strong>Save</strong> — o script está instalado ✅</div></div>
+          <div class="ir"><div class="in">7</div><div class="it"><strong>Teste:</strong> abra a Loja A em aba anônima → adicione produto → clique em checkout → deve ir para a Loja B<br><span style="font-family:var(--mono);font-size:10px;color:var(--cyan)">// F12 → Console → procure "[ShopifyBridge] Ativo"</span></div></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import FIREBASE_CONFIG from './firebase-config.js';
+  const app=initializeApp(FIREBASE_CONFIG);const db=getFirestore(app);const UID='default-user';
+  let genScript='';
+  function toast(msg,type='info'){const el=document.getElementById('toast');el.textContent=msg;el.className=type==='success'?'show ok':type==='error'?'show err':'show info';setTimeout(()=>el.classList.remove('show'),3200)}
+  (async()=>{
+    const [stSnap,prSnap]=await Promise.all([getDoc(doc(db,'stores',UID)),getDoc(doc(db,'products',UID))]);
+    const stores=stSnap.exists()?stSnap.data():{};const prods=prSnap.exists()?prSnap.data():{};
+    const hA=!!stores.storeA?.domain,hB=!!stores.storeB?.domain,hP=prods.items?.length>0;
+    if(hA&&hB){const s1=document.getElementById('s1');s1.className='si done';document.getElementById('s1n').textContent='✓';document.getElementById('s1s').textContent=`${stores.storeA.domain} → ${stores.storeB.domain}`}else{document.getElementById('s1').className='si pend'}
+    if(hP){const s2=document.getElementById('s2');s2.className='si done';document.getElementById('s2n').textContent='✓';const sy=prods.items.filter(p=>p.variantB).length;document.getElementById('s2s').textContent=`${sy}/${prods.items.length} SKUs mapeados`}else{document.getElementById('s2').className='si pend'}
+    if(!hA||!hB){document.getElementById('notReady').style.display='block';return}
+    document.getElementById('ready').style.display='block';
+    document.getElementById('s3').className='si done';document.getElementById('s3n').textContent='✓';
+    const skuMap={};(prods.items||[]).forEach(p=>{if(p.sku&&p.variantB)skuMap[p.sku.toLowerCase().trim()]=String(p.variantB)});
+    genScript=buildScript(stores.storeB.domain,skuMap);
+    document.getElementById('codeEl').textContent=genScript;
+  })();
+  function buildScript(domB,skuMap){return `<!-- ShopifyBridge v2.0 — Gerado em ${new Date().toLocaleString('pt-BR')} -->
+<!-- Cole ANTES de </body> no theme.liquid da Loja A -->
+<script>
+(function(){
+  'use strict';
+  var STORE_B="${domB}";
+  var SKU_MAP=${JSON.stringify(skuMap,null,2)};
+  var SEL=['.upcart-checkout-button','button[name="checkout"]','input[name="checkout"]','[href="/checkout"]','.checkout-btn','a[href*="/checkout"]'];
+  function isBtn(el){if(!el)return false;return SEL.some(function(s){return(el.matches&&el.matches(s))||(el.closest&&el.closest(s))})}
+  function bridge(e){
+    if(!isBtn(e.target))return;
+    e.preventDefault();e.stopPropagation();
+    var btn=e.target;btn.style.opacity='0.6';btn.style.pointerEvents='none';
+    fetch('/cart.js').then(function(r){return r.json()}).then(function(cart){
+      var mapped=[],skip=[];
+      cart.items.forEach(function(item){var sku=(item.sku||'').toLowerCase().trim();var vid=SKU_MAP[sku];if(vid)mapped.push(vid+':'+item.quantity);else skip.push(item.title)});
+      if(skip.length)console.warn('[ShopifyBridge] Sem mapeamento:',skip);
+      if(!mapped.length){console.warn('[ShopifyBridge] Nenhum item mapeado. Checkout local.');window.location.href='/checkout';return}
+      var url='https://'+STORE_B+'/cart/'+mapped.join(',');
+      console.log('[ShopifyBridge] →',url);window.location.href=url;
+    }).catch(function(err){console.error('[ShopifyBridge]',err);btn.style.opacity='';btn.style.pointerEvents='';window.location.href='/checkout'});
+  }
+  document.addEventListener('click',bridge,true);
+  console.log('[ShopifyBridge] Ativo — Destino:',STORE_B);
+})();
+<\/script>`}
+  window.copyScript=function(){navigator.clipboard.writeText(genScript).then(()=>{toast('SCRIPT COPIADO — COLE NO THEME.LIQUID','success');document.getElementById('s3').className='si done'})};
+  window.dlScript=function(){const clean=genScript.replace(/<!--.*?-->/gs,'').replace(/<\/?script>/g,'').trim();const b=new Blob([clean],{type:'text/javascript'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='shopifybridge.js';a.click();toast('ARQUIVO BAIXADO','success')};
+</script>
+</body>
+</html>

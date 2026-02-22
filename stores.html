@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ShopifyBridge — Lojas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#020408;--panel:rgba(6,18,32,0.9);--panel2:rgba(8,24,42,0.6);--border:rgba(0,200,255,0.12);--border-hi:rgba(0,200,255,0.4);--cyan:#00c8ff;--cyan-dim:rgba(0,200,255,0.12);--green:#00ff88;--green-dim:rgba(0,255,136,0.1);--amber:#ffb800;--red:#ff3860;--text:#e0f4ff;--muted:rgba(160,210,240,0.45);--dsp:'Orbitron',monospace;--ui:'Rajdhani',sans-serif;--mono:'Space Mono',monospace}
+    html,body{min-height:100vh}
+    body{background:var(--bg);color:var(--text);font-family:var(--ui);font-size:15px;overflow-x:hidden}
+    body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(0,200,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,200,255,0.03) 1px,transparent 1px);background-size:40px 40px;animation:gridMove 20s linear infinite}
+    @keyframes gridMove{to{background-position:40px 40px}}
+    .scanline{position:fixed;inset:0;z-index:998;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.025) 2px,rgba(0,0,0,0.025) 4px)}
+    .app{display:flex;min-height:100vh;position:relative;z-index:1}
+    .sidebar{width:255px;min-height:100vh;background:var(--panel);border-right:1px solid var(--border);backdrop-filter:blur(20px);display:flex;flex-direction:column;position:fixed;left:0;top:0;z-index:100}
+    .sb-brand{padding:26px 22px 20px;border-bottom:1px solid var(--border)}
+    .sb-eye{font-family:var(--mono);font-size:9px;color:var(--cyan);letter-spacing:3px;margin-bottom:4px}
+    .sb-name{font-family:var(--dsp);font-size:17px;font-weight:900;letter-spacing:2px;text-shadow:0 0 20px rgba(0,200,255,0.3)}
+    .sb-name span{color:var(--cyan)}
+    .sb-status{display:flex;align-items:center;gap:6px;margin-top:8px}
+    .dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 2s ease infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+    .dot-lbl{font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:2px}
+    .sb-nav{flex:1;padding:18px 14px;display:flex;flex-direction:column;gap:3px}
+    .nav-sec{font-family:var(--mono);font-size:9px;letter-spacing:3px;color:var(--muted);padding:10px 8px 5px}
+    .nav-a{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:2px;color:var(--muted);font-size:13px;font-weight:600;text-decoration:none;letter-spacing:1px;text-transform:uppercase;border:1px solid transparent;transition:all 0.2s;position:relative}
+    .nav-a::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--cyan);transform:scaleY(0);transition:transform 0.2s}
+    .nav-a:hover{color:var(--cyan);border-color:var(--border);background:var(--cyan-dim)}
+    .nav-a:hover::before,.nav-a.on::before{transform:scaleY(1)}
+    .nav-a.on{color:var(--cyan);border-color:var(--border-hi);background:var(--cyan-dim)}
+    .sb-foot{padding:14px 22px;border-top:1px solid var(--border)}
+    .sb-ver{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:2px}
+    .main{margin-left:255px;flex:1;padding:34px 38px;min-height:100vh}
+    .ph{margin-bottom:28px;border-bottom:1px solid var(--border);padding-bottom:20px}
+    .ph-eye{font-family:var(--mono);font-size:10px;letter-spacing:3px;color:var(--cyan);margin-bottom:5px}
+    .ph h1{font-family:var(--dsp);font-size:26px;font-weight:900;letter-spacing:2px;text-shadow:0 0 30px rgba(0,200,255,0.15)}
+
+    /* HELP */
+    .help{background:rgba(0,200,255,0.03);border:1px solid var(--border);border-radius:2px;padding:16px 20px;margin-bottom:22px}
+    .help-ttl{font-family:var(--mono);font-size:10px;color:var(--cyan);letter-spacing:2px;margin-bottom:12px}
+    .hstep{display:flex;gap:10px;align-items:flex-start;margin-bottom:7px}
+    .hnum{font-family:var(--mono);font-size:10px;color:var(--cyan);min-width:20px;padding-top:1px}
+    .htxt{font-size:12px;color:var(--muted);line-height:1.6}
+    .htxt code{font-family:var(--mono);color:var(--amber);font-size:11px}
+
+    /* STORES GRID */
+    .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+    @media(max-width:900px){.sgrid{grid-template-columns:1fr}}
+    .sp{background:var(--panel);border:1px solid var(--border);border-radius:2px;overflow:hidden;backdrop-filter:blur(16px);position:relative;transition:border-color 0.3s}
+    .sp:hover{border-color:var(--border-hi)}
+    .sp-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:relative}
+    .sp-head::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+    .sa .sp-head::before{background:linear-gradient(90deg,var(--cyan),transparent)}
+    .sb .sp-head::before{background:linear-gradient(90deg,var(--green),transparent)}
+    .sp-slot{font-family:var(--dsp);font-size:18px;font-weight:900;letter-spacing:3px}
+    .sa .sp-slot{color:var(--cyan);text-shadow:0 0 20px rgba(0,200,255,0.4)}
+    .sb .sp-slot{color:var(--green);text-shadow:0 0 20px rgba(0,255,136,0.4)}
+    .sp-role{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-top:2px}
+    .sp-body{padding:20px;display:flex;flex-direction:column;gap:14px}
+    .fg{display:flex;flex-direction:column;gap:5px}
+    .fl{font-family:var(--mono);font-size:9px;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+    .fi{background:rgba(0,10,20,0.6);border:1px solid var(--border);border-radius:2px;color:var(--text);font-family:var(--mono);font-size:12px;padding:10px 13px;outline:none;transition:border-color 0.2s,box-shadow 0.2s;width:100%;letter-spacing:0.5px}
+    .fi::placeholder{color:rgba(160,210,240,0.2)}
+    .fi:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,200,255,0.1)}
+    .iw{position:relative}
+    .iw .fi{padding-right:42px}
+    .eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:4px;transition:color 0.2s}
+    .eye:hover{color:var(--cyan)}
+    .cr{padding:9px 13px;border-radius:2px;font-family:var(--mono);font-size:11px;letter-spacing:1px;display:flex;align-items:center;gap:7px}
+    .cr.ok{background:var(--green-dim);border:1px solid rgba(0,255,136,0.2);color:var(--green)}
+    .cr.err{background:rgba(255,56,96,0.1);border:1px solid rgba(255,56,96,0.2);color:var(--red)}
+    .cr.loading{background:var(--cyan-dim);border:1px solid rgba(0,200,255,0.2);color:var(--cyan)}
+    .brow{display:flex;gap:8px;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;font-family:var(--ui);font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;border-radius:2px;cursor:pointer;border:1px solid;transition:all 0.2s}
+    .btn-c{background:var(--cyan-dim);border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 10px rgba(0,200,255,0.12)}
+    .btn-c:hover{box-shadow:0 0 22px rgba(0,200,255,0.28);transform:translateY(-1px)}
+    .btn-g{background:var(--green-dim);border-color:var(--green);color:var(--green)}
+    .btn-g:hover{box-shadow:0 0 22px rgba(0,255,136,0.28);transform:translateY(-1px)}
+    .btn-ghost{background:transparent;border-color:var(--border);color:var(--muted)}
+    .btn-ghost:hover{border-color:var(--border-hi);color:var(--text)}
+    .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:2px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+    .bc{background:var(--cyan-dim);color:var(--cyan);border:1px solid rgba(0,200,255,0.2)}
+    .bg{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,255,136,0.2)}
+    .br{background:rgba(255,56,96,0.1);color:var(--red);border:1px solid rgba(255,56,96,0.2)}
+    .bm{background:rgba(160,210,240,0.05);color:var(--muted);border:1px solid var(--border)}
+    .spinner{width:14px;height:14px;border:2px solid rgba(0,200,255,0.2);border-top-color:var(--cyan);border-radius:50%;animation:spin 0.6s linear infinite;display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    #toast{position:fixed;bottom:22px;right:22px;z-index:9999;background:var(--panel);border-radius:2px;padding:13px 18px;font-family:var(--mono);font-size:11px;letter-spacing:1px;transform:translateY(60px);opacity:0;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);max-width:300px;pointer-events:none;backdrop-filter:blur(20px)}
+    #toast.show{transform:translateY(0);opacity:1}
+    #toast.ok{border:1px solid var(--green);color:var(--green)}
+    #toast.err{border:1px solid var(--red);color:var(--red)}
+    #toast.info{border:1px solid var(--cyan);color:var(--cyan)}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    .a0{animation:fadeUp 0.4s ease both}.a1{animation:fadeUp 0.4s 0.07s ease both}.a2{animation:fadeUp 0.4s 0.14s ease both}
+    ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border-hi)}
+    @media(max-width:800px){.sidebar{display:none}.main{margin-left:0;padding:18px 14px}}
+  </style>
+</head>
+<body>
+<div class="scanline"></div>
+<div id="toast"></div>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sb-brand">
+      <div class="sb-eye">// SYSTEM ACTIVE</div>
+      <div class="sb-name">SHOPIFY<span>BRIDGE</span></div>
+      <div class="sb-status"><div class="dot"></div><div class="dot-lbl">ONLINE</div></div>
+    </div>
+    <nav class="sb-nav">
+      <div class="nav-sec">// NAV</div>
+      <a href="dashboard.html" class="nav-a"><span>◈</span>Dashboard</a>
+      <a href="stores.html"   class="nav-a on"><span>◉</span>Lojas</a>
+      <a href="products.html" class="nav-a"><span>▦</span>Produtos</a>
+      <a href="script.html"   class="nav-a"><span>⌘</span>Script</a>
+    </nav>
+    <div class="sb-foot"><div class="sb-ver">VER 2.0.0 — STABLE</div></div>
+  </aside>
+  <main class="main">
+    <div class="ph a0">
+      <div class="ph-eye">// CONFIGURAÇÃO</div>
+      <h1>LOJAS</h1>
+    </div>
+    <div class="help a1">
+      <div class="help-ttl">// COMO OBTER AS CREDENCIAIS SHOPIFY</div>
+      <div class="hstep"><div class="hnum">01</div><div class="htxt">Admin → <strong>Configurações → Apps e canais de vendas → Desenvolver apps</strong></div></div>
+      <div class="hstep"><div class="hnum">02</div><div class="htxt">Clique em <strong>Criar app</strong> com qualquer nome</div></div>
+      <div class="hstep"><div class="hnum">03</div><div class="htxt"><strong>API Admin</strong>: habilite <code>read_products</code> e <code>read_inventory</code></div></div>
+      <div class="hstep"><div class="hnum">04</div><div class="htxt"><strong>API Storefront</strong>: habilite <code>unauthenticated_read_product_listings</code></div></div>
+      <div class="hstep"><div class="hnum">05</div><div class="htxt">Clique em <strong>Instalar app</strong> e copie os dois tokens gerados</div></div>
+    </div>
+    <div class="sgrid a2">
+      <!-- LOJA A -->
+      <div class="sp sa">
+        <div class="sp-head">
+          <div>
+            <div class="sp-slot">LOJA A</div>
+            <div class="sp-role">// Origem — clientes compram aqui</div>
+          </div>
+          <div id="aStatus" class="badge bm">—</div>
+        </div>
+        <div class="sp-body">
+          <div class="fg"><div class="fl">Nome</div><input class="fi" type="text" id="aName" placeholder="Ex: Loja Principal"/></div>
+          <div class="fg"><div class="fl">Domínio .myshopify.com</div><input class="fi" type="text" id="aDomain" placeholder="minha-loja.myshopify.com"/></div>
+          <div class="fg"><div class="fl">Admin API Token</div><div class="iw"><input class="fi" type="password" id="aAdminToken" placeholder="shpat_..."/><button class="eye" onclick="tv('aAdminToken')">👁</button></div></div>
+          <div class="fg"><div class="fl">Storefront API Token</div><div class="iw"><input class="fi" type="password" id="aStorefrontToken" placeholder="Storefront token..."/><button class="eye" onclick="tv('aStorefrontToken')">👁</button></div></div>
+          <div id="aResult" style="display:none"></div>
+          <div class="brow">
+            <button class="btn btn-ghost" onclick="testConn('A')">🔌 TESTAR</button>
+            <button class="btn btn-c" onclick="saveStore('A')">💾 SALVAR LOJA A</button>
+          </div>
+        </div>
+      </div>
+      <!-- LOJA B -->
+      <div class="sp sb">
+        <div class="sp-head">
+          <div>
+            <div class="sp-slot">LOJA B</div>
+            <div class="sp-role">// Destino — checkout enviado aqui</div>
+          </div>
+          <div id="bStatus" class="badge bm">—</div>
+        </div>
+        <div class="sp-body">
+          <div class="fg"><div class="fl">Nome</div><input class="fi" type="text" id="bName" placeholder="Ex: Loja de Contingência"/></div>
+          <div class="fg"><div class="fl">Domínio .myshopify.com</div><input class="fi" type="text" id="bDomain" placeholder="loja-b.myshopify.com"/></div>
+          <div class="fg"><div class="fl">Admin API Token</div><div class="iw"><input class="fi" type="password" id="bAdminToken" placeholder="shpat_..."/><button class="eye" onclick="tv('bAdminToken')">👁</button></div></div>
+          <div class="fg"><div class="fl">Storefront API Token</div><div class="iw"><input class="fi" type="password" id="bStorefrontToken" placeholder="Storefront token..."/><button class="eye" onclick="tv('bStorefrontToken')">👁</button></div></div>
+          <div id="bResult" style="display:none"></div>
+          <div class="brow">
+            <button class="btn btn-ghost" onclick="testConn('B')">🔌 TESTAR</button>
+            <button class="btn btn-g" onclick="saveStore('B')">💾 SALVAR LOJA B</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import FIREBASE_CONFIG from './firebase-config.js';
+  const app=initializeApp(FIREBASE_CONFIG);const db=getFirestore(app);const UID='default-user';
+  let CU=UID;
+  function toast(msg,type='info'){const el=document.getElementById('toast');el.textContent=msg;el.className=type==='success'?'show ok':type==='error'?'show err':'show info';setTimeout(()=>el.classList.remove('show'),3200)}
+  window.tv=function(id){const el=document.getElementById(id);el.type=el.type==='password'?'text':'password'};
+  function setSt(slot,state){const el=document.getElementById(`${slot.toLowerCase()}Status`);const m={saved:['bc','SALVO'],ok:['bg','CONECTADO'],err:['br','ERRO'],loading:['bm','TESTANDO...']};const[c,t]=m[state]||['bm','—'];el.className=`badge ${c}`;el.textContent=t}
+  (async()=>{
+    const snap=await getDoc(doc(db,'stores',UID));
+    if(!snap.exists())return;const d=snap.data();
+    if(d.storeA){document.getElementById('aName').value=d.storeA.name||'';document.getElementById('aDomain').value=d.storeA.domain||'';document.getElementById('aAdminToken').value=d.storeA.adminToken||'';document.getElementById('aStorefrontToken').value=d.storeA.storefrontToken||'';if(d.storeA.domain)setSt('A','saved')}
+    if(d.storeB){document.getElementById('bName').value=d.storeB.name||'';document.getElementById('bDomain').value=d.storeB.domain||'';document.getElementById('bAdminToken').value=d.storeB.adminToken||'';document.getElementById('bStorefrontToken').value=d.storeB.storefrontToken||'';if(d.storeB.domain)setSt('B','saved')}
+  })();
+  window.testConn=async function(slot){
+    const p=slot==='A'?'a':'b';
+    const domain=document.getElementById(`${p}Domain`).value.trim().replace(/https?:\/\//,'').replace(/\/$/,'');
+    const token=document.getElementById(`${p}AdminToken`).value.trim();
+    const re=document.getElementById(`${p}Result`);
+    if(!domain||!token){toast('PREENCHA DOMÍNIO E TOKEN','error');return}
+    setSt(slot,'loading');re.style.display='flex';re.className='cr loading';re.innerHTML='<span class="spinner"></span> VERIFICANDO...';
+    try{const r=await fetch(`https://${domain}/admin/api/2024-01/shop.json`,{headers:{'X-Shopify-Access-Token':token}});
+      if(r.ok){const data=await r.json();setSt(slot,'ok');re.className='cr ok';re.innerHTML=`✓ CONECTADO — ${data.shop?.name||domain}`;toast(`LOJA ${slot} CONECTADA`,'success')}
+      else throw new Error(r.status)}
+    catch(e){setSt(slot,'err');re.className='cr err';re.innerHTML='⚠ CORS BLOQUEADO — salve e teste via sync de produtos'}
+  };
+  window.saveStore=async function(slot){
+    const p=slot==='A'?'a':'b';const key=slot==='A'?'storeA':'storeB';
+    const domain=document.getElementById(`${p}Domain`).value.trim().replace(/https?:\/\//,'').replace(/\/$/,'');
+    if(!domain){toast('INFORME O DOMÍNIO','error');return}
+    await setDoc(doc(db,'stores',UID),{[key]:{name:document.getElementById(`${p}Name`).value.trim(),domain,adminToken:document.getElementById(`${p}AdminToken`).value.trim(),storefrontToken:document.getElementById(`${p}StorefrontToken`).value.trim(),savedAt:new Date().toISOString()}},{merge:true});
+    setSt(slot,'saved');toast(`LOJA ${slot} SALVA`,'success')
+  };
+</script>
+</body>
+</html>
