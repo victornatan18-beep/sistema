@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ShopifyBridge — Lojas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/global.css">
+  <style>
+    .stores-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media(max-width:800px) { .stores-grid { grid-template-columns: 1fr; } }
+
+    .store-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column; gap: 18px; }
+    .store-card.store-a { border-top: 3px solid var(--accent); }
+    .store-card.store-b { border-top: 3px solid var(--accent2); }
+
+    .store-header { display: flex; align-items: center; justify-content: space-between; }
+    .store-title { font-family: var(--font-head); font-size: 18px; font-weight: 800; }
+    .store-tag { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 1px; text-transform: uppercase; }
+    .tag-a { background: rgba(124,92,252,0.15); color: var(--accent); }
+    .tag-b { background: rgba(0,229,255,0.1); color: var(--accent2); }
+
+    .input-with-btn { display: flex; gap: 8px; }
+    .input-with-btn input { flex: 1; }
+    .eye-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 0 14px; cursor: pointer; color: var(--muted); font-size: 16px; }
+    .eye-btn:hover { color: var(--text); }
+
+    .connection-result { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 10px 14px; border-radius: 8px; }
+    .connection-result.ok { background: rgba(34,197,94,0.1); color: var(--success); border: 1px solid rgba(34,197,94,0.2); }
+    .connection-result.err { background: rgba(239,68,68,0.1); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
+
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .help-text { font-size: 12px; color: var(--muted); line-height: 1.6; }
+    .help-text a { color: var(--accent); }
+
+    .info-box {
+      background: rgba(124,92,252,0.07); border: 1px solid rgba(124,92,252,0.2);
+      border-radius: 12px; padding: 16px 20px; margin-bottom: 24px;
+    }
+    .info-box h3 { font-family: var(--font-head); font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--accent); }
+    .info-box ol { padding-left: 18px; color: var(--muted); font-size: 13px; line-height: 2; }
+  </style>
+</head>
+<body>
+<div class="noise"></div>
+<div id="toast"></div>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><span class="icon">⚡</span><span class="name">ShopifyBridge</span></div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">🏠</span> Dashboard</a>
+      <a href="stores.html" class="nav-item active"><span class="nav-icon">🏪</span> Lojas</a>
+      <a href="products.html" class="nav-item"><span class="nav-icon">📦</span> Produtos</a>
+      <a href="script.html" class="nav-item"><span class="nav-icon">⚙️</span> Gerar Script</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="nav-item" onclick="doLogout()" style="cursor:pointer;"><span class="nav-icon">🚪</span> Sair</div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1>Configurar Lojas</h1>
+      <p>Conecte suas duas lojas Shopify para ativar o redirecionamento</p>
+    </div>
+
+    <div class="info-box">
+      <h3>📋 Como obter as credenciais do Shopify</h3>
+      <ol>
+        <li>Acesse o Admin da loja → <strong>Configurações → Apps e canais de vendas</strong></li>
+        <li>Clique em <strong>Desenvolver apps</strong> → <strong>Criar app</strong></li>
+        <li>Em <strong>Configuração de API Admin</strong>, habilite: <code>read_products</code>, <code>read_inventory</code></li>
+        <li>Em <strong>Configuração de API Storefront</strong>, habilite: <code>unauthenticated_read_product_listings</code></li>
+        <li>Clique em <strong>Instalar app</strong> e copie os tokens</li>
+      </ol>
+    </div>
+
+    <div class="stores-grid">
+      <!-- LOJA A -->
+      <div class="store-card store-a">
+        <div class="store-header">
+          <div class="store-title">🏪 Loja A</div>
+          <span class="store-tag tag-a">Origem</span>
+        </div>
+        <p style="font-size:13px;color:var(--muted)">Onde os clientes compram. O checkout será interceptado aqui.</p>
+
+        <div class="form-group">
+          <label>Nome da Loja</label>
+          <input type="text" id="aName" placeholder="Ex: Minha Loja Principal" />
+        </div>
+        <div class="form-group">
+          <label>Domínio Shopify</label>
+          <input type="text" id="aDomain" placeholder="minha-loja.myshopify.com" />
+        </div>
+        <div class="form-group">
+          <label>Admin API Access Token</label>
+          <div class="input-with-btn">
+            <input type="password" id="aAdminToken" placeholder="shpat_..." />
+            <button class="eye-btn" onclick="togglePass('aAdminToken')">👁</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Storefront API Token</label>
+          <div class="input-with-btn">
+            <input type="password" id="aStorefrontToken" placeholder="Storefront token..." />
+            <button class="eye-btn" onclick="togglePass('aStorefrontToken')">👁</button>
+          </div>
+        </div>
+
+        <div id="aResult" style="display:none"></div>
+
+        <div class="btn-row">
+          <button class="btn-secondary" onclick="testConnection('A')">🔌 Testar Conexão</button>
+          <button class="btn-success" onclick="saveStore('A')">💾 Salvar Loja A</button>
+        </div>
+
+        <p class="help-text">⚠️ Os tokens são salvos de forma segura no Firebase, vinculados à sua conta.</p>
+      </div>
+
+      <!-- LOJA B -->
+      <div class="store-card store-b">
+        <div class="store-header">
+          <div class="store-title">🏬 Loja B</div>
+          <span class="store-tag tag-b">Destino</span>
+        </div>
+        <p style="font-size:13px;color:var(--muted)">Para onde os clientes serão redirecionados no checkout.</p>
+
+        <div class="form-group">
+          <label>Nome da Loja</label>
+          <input type="text" id="bName" placeholder="Ex: Loja de Contingência" />
+        </div>
+        <div class="form-group">
+          <label>Domínio Shopify</label>
+          <input type="text" id="bDomain" placeholder="loja-b.myshopify.com" />
+        </div>
+        <div class="form-group">
+          <label>Admin API Access Token</label>
+          <div class="input-with-btn">
+            <input type="password" id="bAdminToken" placeholder="shpat_..." />
+            <button class="eye-btn" onclick="togglePass('bAdminToken')">👁</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Storefront API Token</label>
+          <div class="input-with-btn">
+            <input type="password" id="bStorefrontToken" placeholder="Storefront token..." />
+            <button class="eye-btn" onclick="togglePass('bStorefrontToken')">👁</button>
+          </div>
+        </div>
+
+        <div id="bResult" style="display:none"></div>
+
+        <div class="btn-row">
+          <button class="btn-secondary" onclick="testConnection('B')">🔌 Testar Conexão</button>
+          <button class="btn-success" onclick="saveStore('B')">💾 Salvar Loja B</button>
+        </div>
+
+        <p class="help-text">✅ A Loja B precisa ter os mesmos SKUs que a Loja A para o mapeamento funcionar.</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+  import { requireAuth, logout, toast, db } from '../js/auth.js';
+  import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  window.doLogout = logout;
+  let currentUser = null;
+
+  window.togglePass = function(id) {
+    const el = document.getElementById(id);
+    el.type = el.type === 'password' ? 'text' : 'password';
+  };
+
+  requireAuth(async (user) => {
+    currentUser = user;
+    // Load saved stores
+    const snap = await getDoc(doc(db, 'stores', user.uid));
+    if (snap.exists()) {
+      const d = snap.data();
+      if (d.storeA) {
+        document.getElementById('aName').value = d.storeA.name || '';
+        document.getElementById('aDomain').value = d.storeA.domain || '';
+        document.getElementById('aAdminToken').value = d.storeA.adminToken || '';
+        document.getElementById('aStorefrontToken').value = d.storeA.storefrontToken || '';
+      }
+      if (d.storeB) {
+        document.getElementById('bName').value = d.storeB.name || '';
+        document.getElementById('bDomain').value = d.storeB.domain || '';
+        document.getElementById('bAdminToken').value = d.storeB.adminToken || '';
+        document.getElementById('bStorefrontToken').value = d.storeB.storefrontToken || '';
+      }
+    }
+  });
+
+  window.testConnection = async function(slot) {
+    const prefix = slot === 'A' ? 'a' : 'b';
+    const domain = document.getElementById(`${prefix}Domain`).value.trim();
+    const token = document.getElementById(`${prefix}AdminToken`).value.trim();
+    const resultEl = document.getElementById(`${prefix}Result`);
+
+    if (!domain || !token) {
+      toast('Preencha o domínio e o token antes de testar.', 'error');
+      return;
+    }
+
+    resultEl.style.display = 'flex';
+    resultEl.className = 'connection-result';
+    resultEl.innerHTML = `<span class="spinner"></span> Testando conexão...`;
+
+    // Test via Shopify Storefront API (CORS-friendly)
+    try {
+      const cleanDomain = domain.replace('https://', '').replace('http://', '').replace(/\/$/, '');
+      const res = await fetch(`https://${cleanDomain}/admin/api/2024-01/shop.json`, {
+        headers: { 'X-Shopify-Access-Token': token }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        resultEl.className = 'connection-result ok';
+        resultEl.innerHTML = `✅ Conectado com sucesso! Loja: <strong>${data.shop?.name || cleanDomain}</strong>`;
+        toast(`Loja ${slot} conectada!`, 'success');
+      } else {
+        throw new Error(`Status ${res.status}`);
+      }
+    } catch (e) {
+      // CORS will block direct admin API calls from browser - show helpful message
+      resultEl.className = 'connection-result err';
+      resultEl.innerHTML = `⚠️ Não foi possível testar diretamente (limitação CORS do Shopify). Salve e verifique na página de produtos.`;
+    }
+  };
+
+  window.saveStore = async function(slot) {
+    if (!currentUser) return;
+    const prefix = slot === 'A' ? 'a' : 'b';
+    const storeKey = slot === 'A' ? 'storeA' : 'storeB';
+
+    const name = document.getElementById(`${prefix}Name`).value.trim();
+    const domain = document.getElementById(`${prefix}Domain`).value.trim().replace('https://','').replace('http://','').replace(/\/$/,'');
+    const adminToken = document.getElementById(`${prefix}AdminToken`).value.trim();
+    const storefrontToken = document.getElementById(`${prefix}StorefrontToken`).value.trim();
+
+    if (!domain) { toast('Informe o domínio da loja.', 'error'); return; }
+    if (!adminToken) { toast('Informe o Admin API Token.', 'error'); return; }
+
+    await setDoc(doc(db, 'stores', currentUser.uid), {
+      [storeKey]: { name, domain, adminToken, storefrontToken, savedAt: new Date().toISOString() }
+    }, { merge: true });
+
+    toast(`Loja ${slot} salva com sucesso!`, 'success');
+  };
+</script>
+</body>
+</html>
