@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ShopifyBridge — Produtos</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <style>
+    .top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
+    .top-bar-left { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+
+    .search-box {
+      background: var(--panel2); border: 1px solid var(--border);
+      border-radius: 2px; display: flex; align-items: center; gap: 8px;
+      padding: 0 14px;
+    }
+    .search-box input {
+      background: transparent; border: none; outline: none;
+      color: var(--text); font-family: var(--font-mono); font-size: 11px;
+      padding: 10px 0; letter-spacing: 1px; width: 200px;
+    }
+    .search-box input::placeholder { color: var(--muted); }
+    .search-icon { color: var(--muted); font-size: 12px; }
+
+    .filter-tabs { display: flex; gap: 4px; }
+    .filter-tab {
+      padding: 8px 14px; border-radius: 2px;
+      font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px;
+      text-transform: uppercase; cursor: pointer;
+      border: 1px solid var(--border); background: transparent; color: var(--muted);
+      transition: all 0.15s;
+    }
+    .filter-tab:hover { color: var(--text); border-color: var(--border-hi); }
+    .filter-tab.active { background: var(--cyan-dim); border-color: var(--cyan); color: var(--cyan); }
+
+    .summary-row { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .summary-pill {
+      font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px;
+      padding: 5px 12px; border-radius: 2px;
+    }
+
+    .prod-img { width: 36px; height: 36px; border-radius: 2px; object-fit: cover; border: 1px solid var(--border); }
+    .prod-placeholder { width:36px; height:36px; border-radius:2px; background:var(--panel2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--muted); }
+
+    .sku-tag { font-family: var(--font-mono); font-size: 10px; background: rgba(0,200,255,0.06); border: 1px solid rgba(0,200,255,0.12); color: var(--cyan); padding: 2px 8px; border-radius: 2px; letter-spacing: 1px; }
+
+    .progress-section { margin-bottom: 20px; }
+    .progress-label { font-family: var(--font-mono); font-size: 10px; color: var(--cyan); letter-spacing: 2px; margin-bottom: 8px; }
+
+    .panel-table { overflow: hidden; }
+    .table-wrap { overflow-x: auto; }
+  </style>
+</head>
+<body>
+<div class="scanline"></div>
+<div id="toast"></div>
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-eyebrow">// SYSTEM ACTIVE</div>
+      <div class="brand-name">SHOPIFY<span>BRIDGE</span></div>
+      <div class="brand-status"><div class="status-dot"></div><div class="status-label">ONLINE</div></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">// NAV</div>
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">◈</span>Dashboard</a>
+      <a href="stores.html"   class="nav-item"><span class="nav-icon">◉</span>Lojas</a>
+      <a href="products.html" class="nav-item active"><span class="nav-icon">▦</span>Produtos</a>
+      <a href="script.html"   class="nav-item"><span class="nav-icon">⌘</span>Script</a>
+    </nav>
+    <div style="padding:16px 24px;border-top:1px solid var(--border);">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:2px;">VER 2.0.0 — STABLE</div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header animate-in">
+      <div class="page-header-left">
+        <div class="page-eyebrow">// MAPEAMENTO DE SKU</div>
+        <h1>PRODUTOS</h1>
+      </div>
+      <button class="btn btn-cyan" onclick="syncProducts()">
+        <span id="syncTxt">⟳ SINCRONIZAR</span>
+        <span id="syncSpin" class="spinner" style="display:none"></span>
+      </button>
+    </div>
+
+    <div id="progressSection" style="display:none" class="animate-in">
+      <div class="progress-label" id="progressLabel">// INICIANDO...</div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <br>
+    </div>
+
+    <div class="top-bar animate-in delay-1">
+      <div class="top-bar-left">
+        <div class="search-box">
+          <span class="search-icon">⌕</span>
+          <input type="text" id="searchInput" placeholder="BUSCAR POR NOME OU SKU..." oninput="renderTable()">
+        </div>
+        <div class="filter-tabs">
+          <button class="filter-tab active" onclick="setFilter('all',this)">TODOS</button>
+          <button class="filter-tab" onclick="setFilter('synced',this)">MAPEADOS</button>
+          <button class="filter-tab" onclick="setFilter('missing',this)">SEM MAPEAMENTO</button>
+        </div>
+      </div>
+      <div id="lastSync" style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:1px;"></div>
+    </div>
+
+    <div class="summary-row" id="summaryRow" style="display:none">
+      <span class="summary-pill badge-green" id="pill-synced"></span>
+      <span class="summary-pill badge-amber" id="pill-missing"></span>
+      <span class="summary-pill badge-muted" id="pill-total"></span>
+    </div>
+
+    <div class="panel panel-table animate-in delay-2">
+      <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
+      <div class="panel-corner bl"></div><div class="panel-corner br"></div>
+
+      <div class="table-wrap">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">▦</div>
+          <div class="empty-title">NENHUM PRODUTO</div>
+          <div class="empty-desc">Clique em SINCRONIZAR para buscar os produtos das duas lojas.<br>Certifique-se de ter configurado as lojas primeiro.</div>
+        </div>
+        <table class="data-table" id="productsTable" style="display:none">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th>SKU</th>
+              <th>Preço</th>
+              <th>Variant A</th>
+              <th>Variant B</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="productsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+  import { requireAuth, db, toast } from '../js/auth.js';
+  import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  let currentUser, allProducts = [], currentFilter = 'all';
+
+  requireAuth(async (user) => {
+    currentUser = user;
+    const snap = await getDoc(doc(db, 'products', user.uid));
+    if (snap.exists() && snap.data().items) {
+      allProducts = snap.data().items;
+      if (snap.data().lastSync) {
+        document.getElementById('lastSync').textContent = `// ÚLTIMO SYNC: ${new Date(snap.data().lastSync).toLocaleString('pt-BR')}`;
+      }
+      renderTable(); showSummary();
+    }
+  });
+
+  window.setFilter = function(f, btn) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderTable();
+  };
+
+  window.renderTable = function() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    let items = allProducts;
+    if (currentFilter === 'synced') items = items.filter(p => p.variantB);
+    if (currentFilter === 'missing') items = items.filter(p => !p.variantB);
+    if (search) items = items.filter(p => p.title?.toLowerCase().includes(search) || p.sku?.toLowerCase().includes(search));
+
+    const tbody = document.getElementById('productsBody');
+    const table = document.getElementById('productsTable');
+    const empty = document.getElementById('emptyState');
+
+    if (items.length === 0) {
+      table.style.display = 'none'; empty.style.display = 'block';
+      empty.querySelector('.empty-title').textContent = search ? 'SEM RESULTADOS' : 'NENHUM PRODUTO';
+      return;
+    }
+    table.style.display = 'table'; empty.style.display = 'none';
+
+    tbody.innerHTML = items.map(p => `
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:10px;">
+            ${p.image ? `<img class="prod-img" src="${p.image}" alt="">` : `<div class="prod-placeholder">▦</div>`}
+            <span style="font-size:13px;font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.title || '—'}</span>
+          </div>
+        </td>
+        <td><span class="sku-tag">${p.sku || '—'}</span></td>
+        <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted);">${p.price ? `€${p.price}` : '—'}</td>
+        <td style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">${p.variantA || '—'}</td>
+        <td style="font-family:var(--font-mono);font-size:10px;">${p.variantB ? `<span style="color:var(--green)">${p.variantB}</span>` : `<span style="color:var(--red)">—</span>`}</td>
+        <td>${p.variantB ? `<span class="badge badge-green">✓ MAPEADO</span>` : `<span class="badge badge-amber">⚠ SEM MATCH</span>`}</td>
+      </tr>
+    `).join('');
+  };
+
+  function showSummary() {
+    const synced = allProducts.filter(p => p.variantB).length;
+    const missing = allProducts.length - synced;
+    document.getElementById('pill-synced').textContent = `✓ ${synced} MAPEADOS`;
+    document.getElementById('pill-missing').textContent = `⚠ ${missing} SEM MATCH`;
+    document.getElementById('pill-total').textContent = `▦ ${allProducts.length} TOTAL`;
+    document.getElementById('summaryRow').style.display = 'flex';
+  }
+
+  window.syncProducts = async function() {
+    if (!currentUser) return;
+    const storesSnap = await getDoc(doc(db, 'stores', currentUser.uid));
+    if (!storesSnap.exists()) { toast('CONFIGURE AS LOJAS PRIMEIRO', 'error'); return; }
+    const stores = storesSnap.data();
+    if (!stores.storeA?.domain || !stores.storeA?.adminToken) { toast('CONFIGURE A LOJA A', 'error'); return; }
+    if (!stores.storeB?.domain || !stores.storeB?.adminToken) { toast('CONFIGURE A LOJA B', 'error'); return; }
+
+    document.getElementById('syncTxt').style.display = 'none';
+    document.getElementById('syncSpin').style.display = 'inline-block';
+    document.getElementById('progressSection').style.display = 'block';
+
+    const setP = (pct, lbl) => {
+      document.getElementById('progressFill').style.width = pct + '%';
+      document.getElementById('progressLabel').textContent = `// ${lbl}`;
+    };
+
+    try {
+      setP(15, 'BUSCANDO PRODUTOS DA LOJA A...');
+      const resA = await fetch(`https://${stores.storeA.domain}/admin/api/2024-01/products.json?limit=250&fields=id,title,variants,image`, { headers: { 'X-Shopify-Access-Token': stores.storeA.adminToken } });
+      if (!resA.ok) throw new Error('ERRO NA LOJA A — VERIFIQUE O TOKEN');
+      const { products: prodsA } = await resA.json();
+
+      setP(45, `${prodsA.length} PRODUTOS NA LOJA A — BUSCANDO LOJA B...`);
+      const resB = await fetch(`https://${stores.storeB.domain}/admin/api/2024-01/products.json?limit=250&fields=id,title,variants`, { headers: { 'X-Shopify-Access-Token': stores.storeB.adminToken } });
+      if (!resB.ok) throw new Error('ERRO NA LOJA B — VERIFIQUE O TOKEN');
+      const { products: prodsB } = await resB.json();
+
+      setP(70, 'MAPEANDO SKUs...');
+      const skuMapB = {};
+      prodsB.forEach(p => p.variants?.forEach(v => { if (v.sku) skuMapB[v.sku.toLowerCase().trim()] = v.id; }));
+
+      allProducts = [];
+      prodsA.forEach(p => {
+        p.variants?.forEach(v => {
+          if (!v.sku) return;
+          allProducts.push({
+            title: p.title, sku: v.sku, price: v.price,
+            image: p.image?.src || null,
+            variantA: v.id,
+            variantB: skuMapB[v.sku.toLowerCase().trim()] || null,
+          });
+        });
+      });
+
+      setP(90, 'SALVANDO...');
+      await setDoc(doc(db, 'products', currentUser.uid), { items: allProducts, lastSync: new Date().toISOString() });
+
+      setP(100, `SYNC COMPLETO — ${allProducts.length} PRODUTOS`);
+      renderTable(); showSummary();
+      document.getElementById('lastSync').textContent = `// ÚLTIMO SYNC: ${new Date().toLocaleString('pt-BR')}`;
+      toast(`${allProducts.length} PRODUTOS SINCRONIZADOS`, 'success');
+    } catch(e) {
+      toast(e.message, 'error');
+      document.getElementById('progressLabel').textContent = `// ERRO: ${e.message}`;
+    } finally {
+      document.getElementById('syncTxt').style.display = 'inline';
+      document.getElementById('syncSpin').style.display = 'none';
+      setTimeout(() => { document.getElementById('progressSection').style.display = 'none'; }, 4000);
+    }
+  };
+</script>
+</body>
+</html>

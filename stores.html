@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ShopifyBridge — Lojas</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <style>
+    .stores-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media(max-width:900px){ .stores-grid { grid-template-columns: 1fr; } }
+
+    .store-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 2px; overflow: hidden;
+      backdrop-filter: blur(16px);
+      position: relative;
+      transition: border-color 0.3s;
+    }
+    .store-panel:hover { border-color: var(--border-hi); }
+
+    .store-panel-header {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      position: relative;
+    }
+    .store-panel-header::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    }
+    .store-a .store-panel-header::before { background: linear-gradient(90deg, var(--cyan), transparent); }
+    .store-b .store-panel-header::before { background: linear-gradient(90deg, var(--green), transparent); }
+
+    .store-slot {
+      font-family: var(--font-display); font-size: 20px; font-weight: 900;
+      letter-spacing: 3px;
+    }
+    .store-a .store-slot { color: var(--cyan); text-shadow: 0 0 20px rgba(0,200,255,0.5); }
+    .store-b .store-slot { color: var(--green); text-shadow: 0 0 20px rgba(0,255,136,0.5); }
+
+    .store-role { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+
+    .store-body { padding: 22px; display: flex; flex-direction: column; gap: 16px; }
+
+    .connection-result {
+      padding: 10px 14px; border-radius: 2px;
+      font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .connection-result.ok  { background: var(--green-dim); border: 1px solid rgba(0,255,136,0.2); color: var(--green); }
+    .connection-result.err { background: var(--red-dim);   border: 1px solid rgba(255,56,96,0.2);  color: var(--red); }
+    .connection-result.loading { background: var(--cyan-dim); border: 1px solid rgba(0,200,255,0.2); color: var(--cyan); }
+
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    .help-card {
+      background: rgba(0,200,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 2px; padding: 18px 22px;
+      margin-bottom: 24px;
+    }
+    .help-title { font-family: var(--font-mono); font-size: 10px; color: var(--cyan); letter-spacing: 2px; margin-bottom: 14px; }
+    .help-steps { display: flex; flex-direction: column; gap: 8px; }
+    .help-step { display: flex; gap: 12px; align-items: flex-start; }
+    .help-step-num {
+      font-family: var(--font-mono); font-size: 10px; color: var(--cyan);
+      min-width: 20px; padding-top: 1px;
+    }
+    .help-step-text { font-size: 12px; color: var(--muted); line-height: 1.6; }
+    .help-step-text code { font-family: var(--font-mono); color: var(--amber); font-size: 11px; }
+  </style>
+</head>
+<body>
+<div class="scanline"></div>
+<div id="toast"></div>
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-eyebrow">// SYSTEM ACTIVE</div>
+      <div class="brand-name">SHOPIFY<span>BRIDGE</span></div>
+      <div class="brand-status"><div class="status-dot"></div><div class="status-label">ONLINE</div></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">// NAV</div>
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">◈</span>Dashboard</a>
+      <a href="stores.html"   class="nav-item active"><span class="nav-icon">◉</span>Lojas</a>
+      <a href="products.html" class="nav-item"><span class="nav-icon">▦</span>Produtos</a>
+      <a href="script.html"   class="nav-item"><span class="nav-icon">⌘</span>Script</a>
+    </nav>
+    <div style="padding:16px 24px;border-top:1px solid var(--border);">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:2px;">VER 2.0.0 — STABLE</div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header animate-in">
+      <div class="page-header-left">
+        <div class="page-eyebrow">// CONFIGURAÇÃO</div>
+        <h1>LOJAS</h1>
+      </div>
+    </div>
+
+    <div class="help-card animate-in delay-1">
+      <div class="help-title">// COMO OBTER AS CREDENCIAIS SHOPIFY</div>
+      <div class="help-steps">
+        <div class="help-step"><div class="help-step-num">01</div><div class="help-step-text">Admin da loja → <strong>Configurações → Apps e canais de vendas → Desenvolver apps</strong></div></div>
+        <div class="help-step"><div class="help-step-num">02</div><div class="help-step-text">Clique em <strong>Criar app</strong> e dê um nome (ex: <code>ShopifyBridge</code>)</div></div>
+        <div class="help-step"><div class="help-step-num">03</div><div class="help-step-text">Em <strong>API Admin</strong>: habilite <code>read_products</code> e <code>read_inventory</code></div></div>
+        <div class="help-step"><div class="help-step-num">04</div><div class="help-step-text">Em <strong>API Storefront</strong>: habilite <code>unauthenticated_read_product_listings</code></div></div>
+        <div class="help-step"><div class="help-step-num">05</div><div class="help-step-text">Clique em <strong>Instalar app</strong> e copie os dois tokens gerados</div></div>
+      </div>
+    </div>
+
+    <div class="stores-grid">
+      <!-- LOJA A -->
+      <div class="store-panel store-a animate-in delay-2">
+        <div class="store-panel-header">
+          <div>
+            <div class="store-slot">LOJA A</div>
+            <div class="store-role">// Origem — onde os clientes compram</div>
+          </div>
+          <div id="aStatus" class="badge badge-muted">—</div>
+        </div>
+        <div class="store-body">
+          <div class="form-group">
+            <div class="form-label">Nome da Loja</div>
+            <input class="form-input" type="text" id="aName" placeholder="Ex: Loja Principal" />
+          </div>
+          <div class="form-group">
+            <div class="form-label">Domínio .myshopify.com</div>
+            <input class="form-input" type="text" id="aDomain" placeholder="minha-loja.myshopify.com" />
+          </div>
+          <div class="form-group">
+            <div class="form-label">Admin API Access Token</div>
+            <div class="input-wrap">
+              <input class="form-input" type="password" id="aAdminToken" placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxx" />
+              <button class="input-eye" onclick="toggleVis('aAdminToken')">👁</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="form-label">Storefront API Token</div>
+            <div class="input-wrap">
+              <input class="form-input" type="password" id="aStorefrontToken" placeholder="Storefront token..." />
+              <button class="input-eye" onclick="toggleVis('aStorefrontToken')">👁</button>
+            </div>
+          </div>
+          <div id="aResult" style="display:none"></div>
+          <div class="btn-row">
+            <button class="btn btn-ghost" onclick="testConn('A')">🔌 TESTAR</button>
+            <button class="btn btn-cyan" onclick="saveStore('A')">💾 SALVAR LOJA A</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOJA B -->
+      <div class="store-panel store-b animate-in delay-3">
+        <div class="store-panel-header">
+          <div>
+            <div class="store-slot">LOJA B</div>
+            <div class="store-role">// Destino — checkout enviado aqui</div>
+          </div>
+          <div id="bStatus" class="badge badge-muted">—</div>
+        </div>
+        <div class="store-body">
+          <div class="form-group">
+            <div class="form-label">Nome da Loja</div>
+            <input class="form-input" type="text" id="bName" placeholder="Ex: Loja de Contingência" />
+          </div>
+          <div class="form-group">
+            <div class="form-label">Domínio .myshopify.com</div>
+            <input class="form-input" type="text" id="bDomain" placeholder="loja-b.myshopify.com" />
+          </div>
+          <div class="form-group">
+            <div class="form-label">Admin API Access Token</div>
+            <div class="input-wrap">
+              <input class="form-input" type="password" id="bAdminToken" placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxx" />
+              <button class="input-eye" onclick="toggleVis('bAdminToken')">👁</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="form-label">Storefront API Token</div>
+            <div class="input-wrap">
+              <input class="form-input" type="password" id="bStorefrontToken" placeholder="Storefront token..." />
+              <button class="input-eye" onclick="toggleVis('bStorefrontToken')">👁</button>
+            </div>
+          </div>
+          <div id="bResult" style="display:none"></div>
+          <div class="btn-row">
+            <button class="btn btn-ghost" onclick="testConn('B')">🔌 TESTAR</button>
+            <button class="btn btn-green" onclick="saveStore('B')">💾 SALVAR LOJA B</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+  import { requireAuth, db, toast } from '../js/auth.js';
+  import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  let currentUser;
+
+  window.toggleVis = (id) => {
+    const el = document.getElementById(id);
+    el.type = el.type === 'password' ? 'text' : 'password';
+  };
+
+  requireAuth(async (user) => {
+    currentUser = user;
+    const snap = await getDoc(doc(db, 'stores', user.uid));
+    if (!snap.exists()) return;
+    const d = snap.data();
+    if (d.storeA) {
+      document.getElementById('aName').value = d.storeA.name || '';
+      document.getElementById('aDomain').value = d.storeA.domain || '';
+      document.getElementById('aAdminToken').value = d.storeA.adminToken || '';
+      document.getElementById('aStorefrontToken').value = d.storeA.storefrontToken || '';
+      if (d.storeA.domain) setStatus('A', 'saved');
+    }
+    if (d.storeB) {
+      document.getElementById('bName').value = d.storeB.name || '';
+      document.getElementById('bDomain').value = d.storeB.domain || '';
+      document.getElementById('bAdminToken').value = d.storeB.adminToken || '';
+      document.getElementById('bStorefrontToken').value = d.storeB.storefrontToken || '';
+      if (d.storeB.domain) setStatus('B', 'saved');
+    }
+  });
+
+  function setStatus(slot, state) {
+    const el = document.getElementById(`${slot.toLowerCase()}Status`);
+    const map = { saved: ['badge-cyan','SALVO'], ok: ['badge-green','CONECTADO'], err: ['badge-red','ERRO'], loading: ['badge-muted','TESTANDO...'] };
+    const [cls, txt] = map[state] || ['badge-muted','—'];
+    el.className = `badge ${cls}`;
+    el.textContent = txt;
+  }
+
+  window.testConn = async function(slot) {
+    const p = slot === 'A' ? 'a' : 'b';
+    const domain = document.getElementById(`${p}Domain`).value.trim().replace(/https?:\/\//,'').replace(/\/$/,'');
+    const token = document.getElementById(`${p}AdminToken`).value.trim();
+    const resultEl = document.getElementById(`${p}Result`);
+
+    if (!domain || !token) { toast('PREENCHA DOMÍNIO E TOKEN', 'error'); return; }
+
+    setStatus(slot, 'loading');
+    resultEl.style.display = 'flex';
+    resultEl.className = 'connection-result loading';
+    resultEl.innerHTML = `<span class="spinner"></span> VERIFICANDO CONEXÃO...`;
+
+    try {
+      const res = await fetch(`https://${domain}/admin/api/2024-01/shop.json`, {
+        headers: { 'X-Shopify-Access-Token': token }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStatus(slot, 'ok');
+        resultEl.className = 'connection-result ok';
+        resultEl.innerHTML = `✓ CONECTADO — ${data.shop?.name || domain}`;
+        toast(`LOJA ${slot} CONECTADA`, 'success');
+      } else { throw new Error(res.status); }
+    } catch(e) {
+      setStatus(slot, 'err');
+      resultEl.className = 'connection-result err';
+      resultEl.innerHTML = `⚠ CORS BLOQUEADO — salve e teste via sincronização de produtos`;
+    }
+  };
+
+  window.saveStore = async function(slot) {
+    if (!currentUser) return;
+    const p = slot === 'A' ? 'a' : 'b';
+    const key = slot === 'A' ? 'storeA' : 'storeB';
+    const domain = document.getElementById(`${p}Domain`).value.trim().replace(/https?:\/\//,'').replace(/\/$/,'');
+    if (!domain) { toast('INFORME O DOMÍNIO', 'error'); return; }
+    await setDoc(doc(db,'stores',currentUser.uid), {
+      [key]: {
+        name: document.getElementById(`${p}Name`).value.trim(),
+        domain,
+        adminToken: document.getElementById(`${p}AdminToken`).value.trim(),
+        storefrontToken: document.getElementById(`${p}StorefrontToken`).value.trim(),
+        savedAt: new Date().toISOString()
+      }
+    }, { merge: true });
+    setStatus(slot, 'saved');
+    toast(`LOJA ${slot} SALVA`, 'success');
+  };
+</script>
+</body>
+</html>
